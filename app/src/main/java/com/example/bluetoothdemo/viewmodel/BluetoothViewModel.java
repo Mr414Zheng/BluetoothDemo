@@ -5,7 +5,6 @@ import android.bluetooth.BluetoothDevice;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 
 /**
@@ -22,7 +21,7 @@ public class BluetoothViewModel extends ViewModel {
     private MutableLiveData<HashMap<String, BluetoothDevice>> mBluetoothDevices;
 
     // 连接配对过的蓝牙设备
-    private MutableLiveData<ArrayList<BluetoothDevice>> mRecord;
+    private MutableLiveData<HashMap<String, BluetoothDevice>> mRecord;
 
     /**
      * 获取蓝牙状态LiveData
@@ -67,7 +66,7 @@ public class BluetoothViewModel extends ViewModel {
     /**
      * 获取连接配对过的蓝牙设备LiveData
      */
-    public MutableLiveData<ArrayList<BluetoothDevice>> getRecordLiveData() {
+    public MutableLiveData<HashMap<String, BluetoothDevice>> getRecordLiveData() {
         if (mRecord == null) {
             mRecord = new MutableLiveData<>();
         }
