@@ -6,6 +6,7 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  * Author: ZhengHuaizhi
@@ -18,7 +19,7 @@ public class BluetoothViewModel extends ViewModel {
     private MutableLiveData<String> mBluetoothState;
 
     // 扫描到的蓝牙设备
-    private MutableLiveData<ArrayList<BluetoothDevice>> mBluetoothDevices;
+    private MutableLiveData<HashMap<String, BluetoothDevice>> mBluetoothDevices;
 
     // 连接配对过的蓝牙设备
     private MutableLiveData<ArrayList<BluetoothDevice>> mRecord;
@@ -27,50 +28,59 @@ public class BluetoothViewModel extends ViewModel {
      * 获取蓝牙状态LiveData
      */
     public MutableLiveData<String> getBluetoothStateLiveData() {
-        return mBluetoothState == null ? new MutableLiveData<>() : null;
+        if (mBluetoothState == null) {
+            mBluetoothState = new MutableLiveData<>();
+        }
+        return mBluetoothState;
     }
 
-//    /**
-//     * 设置蓝牙状态LiveData
-//     */
-//    public void setBluetoothStateLiveData(String state) {
-//        if (mBluetoothState == null) {
-//            mBluetoothState = new MutableLiveData<>();
-//        }
-//        mBluetoothState.setValue(state);
-//    }
+    //    /**
+    //     * 设置蓝牙状态LiveData
+    //     */
+    //    public void setBluetoothStateLiveData(String state) {
+    //        if (mBluetoothState == null) {
+    //            mBluetoothState = new MutableLiveData<>();
+    //        }
+    //        mBluetoothState.setValue(state);
+    //    }
 
     /**
      * 获取扫描到的蓝牙设备LiveData
      */
-    public MutableLiveData<ArrayList<BluetoothDevice>> getBluetoothDevicesLiveData() {
-        return mBluetoothDevices == null ? new MutableLiveData<>() : null;
+    public MutableLiveData<HashMap<String, BluetoothDevice>> getBluetoothDevicesLiveData() {
+        if (mBluetoothDevices == null) {
+            mBluetoothDevices = new MutableLiveData<>();
+        }
+        return mBluetoothDevices;
     }
 
-//    /**
-//     * 设置扫描到的蓝牙设备LiveData
-//     */
-//    public void setBluetoothDevicesLiveData(ArrayList<BluetoothDevice> devices) {
-//        if (mBluetoothDevices == null) {
-//            mBluetoothDevices = new MutableLiveData<>();
-//        }
-//        mBluetoothDevices.setValue(devices);
-//    }
+    //    /**
+    //     * 设置扫描到的蓝牙设备LiveData
+    //     */
+    //    public void setBluetoothDevicesLiveData(ArrayList<BluetoothDevice> devices) {
+    //        if (mBluetoothDevices == null) {
+    //            mBluetoothDevices = new MutableLiveData<>();
+    //        }
+    //        mBluetoothDevices.setValue(devices);
+    //    }
 
     /**
      * 获取连接配对过的蓝牙设备LiveData
      */
     public MutableLiveData<ArrayList<BluetoothDevice>> getRecordLiveData() {
-        return mRecord == null ? new MutableLiveData<>() : null;
+        if (mRecord == null) {
+            mRecord = new MutableLiveData<>();
+        }
+        return mRecord;
     }
 
-//    /**
-//     * 设置连接配对过的蓝牙设备LiveData
-//     */
-//    public void setRecordLiveData(ArrayList<BluetoothDevice> devices) {
-//        if (mRecord == null) {
-//            mRecord = new MutableLiveData<>();
-//        }
-//        mRecord.setValue(devices);
-//    }
+    //    /**
+    //     * 设置连接配对过的蓝牙设备LiveData
+    //     */
+    //    public void setRecordLiveData(ArrayList<BluetoothDevice> devices) {
+    //        if (mRecord == null) {
+    //            mRecord = new MutableLiveData<>();
+    //        }
+    //        mRecord.setValue(devices);
+    //    }
 }

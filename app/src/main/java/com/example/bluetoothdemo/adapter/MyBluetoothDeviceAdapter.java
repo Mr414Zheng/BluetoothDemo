@@ -12,6 +12,9 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.bluetoothdemo.R;
 
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Author: ZhengHuaizhi
@@ -44,6 +47,32 @@ public class MyBluetoothDeviceAdapter extends RecyclerView.Adapter<MyBluetoothDe
     @Override
     public int getItemCount() {
         return mDataList.size();
+    }
+
+    /**
+     * 设置新数据
+     */
+    public void setDataList(Map<String, BluetoothDevice> dataList) {
+        // 之后应显示的mac地址列表
+        Set<String> keySet = dataList.keySet();
+        // 之前显示的mac地址列表
+        List<String> addressList = new ArrayList<>();
+        // 新扫描出的蓝牙设备列表
+        List<BluetoothDevice> newDevices = new ArrayList<>();
+
+        for (BluetoothDevice device : mDataList) {
+            addressList.add(device.getAddress());
+        }
+
+        for (String key : keySet) {
+            if (!addressList.contains(key)) {
+                // 如果为之前未显示的mac地址，添加进新设备列表
+                newDevices.add(dataList.get(key));
+            }
+        }
+
+        mDataList.addAll(newDevices);
+        notifyItemRangeInserted(mDataList.size(), newDevices.size());
     }
 
     class BluetoothDeviceViewHolder extends RecyclerView.ViewHolder {

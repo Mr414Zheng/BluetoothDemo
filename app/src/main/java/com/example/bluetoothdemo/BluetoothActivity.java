@@ -31,7 +31,16 @@ import com.example.bluetoothdemo.lifecycle.BluetoothLifecycleObserver;
 import com.example.bluetoothdemo.viewmodel.BluetoothViewModel;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import io.reactivex.Observable;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.Consumer;
+import io.reactivex.schedulers.Schedulers;
 
 public class BluetoothActivity extends AppCompatActivity implements LifecycleOwner,
         View.OnClickListener {
@@ -58,9 +67,11 @@ public class BluetoothActivity extends AppCompatActivity implements LifecycleOwn
     // 蓝牙扫描器是否处于扫描状态
     private boolean isScanning = false;
     // 存放扫描到的蓝牙设备
-    private ArrayList<BluetoothDevice> mDevices;
+    private HashMap<String, BluetoothDevice> mDevices;
     // 由蓝牙连接到的设备的托管
     private BluetoothGatt mBluetoothGatt;
+
+    private CompositeDisposable disposables = new CompositeDisposable();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -101,9 +112,9 @@ public class BluetoothActivity extends AppCompatActivity implements LifecycleOwn
 
     private void initRecyclerView() {
         if (mDevices == null) {
-            mDevices = new ArrayList<>();
+            mDevices = new HashMap<>();
         }
-        mDeviceAdapter = new MyBluetoothDeviceAdapter(mDevices);
+        mDeviceAdapter = new MyBluetoothDeviceAdapter(new ArrayList<>());
         rcDevices.setLayoutManager(new LinearLayoutManager(this));
         rcDevices.setAdapter(mDeviceAdapter);
     }
@@ -130,10 +141,10 @@ public class BluetoothActivity extends AppCompatActivity implements LifecycleOwn
         });
         // 扫描到的蓝牙设备
         mViewModel.getBluetoothDevicesLiveData().observe(this, bluetoothDevices -> {
-            for (BluetoothDevice device : bluetoothDevices) {
-                LogUtils.d("扫描到的蓝牙设备:" + device.getName());
+            for (int i = 0; i < bluetoothDevices.size(); i++) {
+                LogUtils.d("扫描到的蓝牙设备:" + bluetoothDevices.keySet());
             }
-            mDeviceAdapter.notifyDataSetChanged();
+            mDeviceAdapter.setDataList(bluetoothDevices);
         });
         // 蓝牙状态
         mViewModel.getBluetoothStateLiveData().observe(this, state -> {
@@ -187,48 +198,86 @@ public class BluetoothActivity extends AppCompatActivity implements LifecycleOwn
 
         // 蓝牙扫描回调
         if (mScanCallback == null) {
-            mScanCallback = new ScanCallback() {
-                @Override
-                public void onScanResult(int callbackType, ScanResult result) {
-                    super.onScanResult(callbackType, result);
-                    // 将扫描出的设备结果保存起来
-                    BluetoothDevice device = result.getDevice();
-                    mDevices.add(device);
-                    LogUtils.d("onScanResult:" + device.getName() + ":" + device.getAddress());
-                    mViewModel.getBluetoothDevicesLiveData().setValue(mDevices);
-                }
-
-                @Override
-                public void onBatchScanResults(List<ScanResult> results) {
-                    super.onBatchScanResults(results);
-                    LogUtils.d("onBatchScanResults:" + "length is " + results.size());
-                }
-
-                @Override
-                public void onScanFailed(int errorCode) {
-                    super.onScanFailed(errorCode);
-                    LogUtils.d("onScanFailed:" + errorCode);
-                }
-            };
+            createScanCallback();
         }
 
         if (isScanning) {
             // 如果正在扫描，则取消蓝牙扫描；注意！需要和开启蓝牙传入的回调是同一个实例
-            isScanning = false;
-            mBluetoothScanner.stopScan(mScanCallback);
-            mViewModel.getBluetoothStateLiveData().setValue("蓝牙扫描已停止");
+            stopScan();
         } else {
             // 如果没开启扫描，则开启蓝牙扫描
-            isScanning = true;
-            mBluetoothScanner.startScan(mScanCallback);
-            mViewModel.getBluetoothStateLiveData().setValue("蓝牙扫描已开启");
+            startScan();
         }
+    }
+
+    /**
+     * 创建蓝牙扫描回调实例
+     */
+    private void createScanCallback() {
+        mScanCallback = new ScanCallback() {
+            @Override
+            public void onScanResult(int callbackType, ScanResult result) {
+                super.onScanResult(callbackType, result);
+                BluetoothDevice device = result.getDevice();
+                if (!mDevices.containsKey(device.getAddress())) {
+                    // 将初次扫描出的设备结果保存起来
+                    mDevices.put(device.getAddress(), device);
+                    LogUtils.d("onScanResult:" + device.getName() + ":" + device.getAddress());
+                    mViewModel.getBluetoothDevicesLiveData().setValue(mDevices);
+                }
+            }
+
+            @Override
+            public void onBatchScanResults(List<ScanResult> results) {
+                super.onBatchScanResults(results);
+                LogUtils.d("onBatchScanResults:" + "length is " + results.size());
+            }
+
+            @Override
+            public void onScanFailed(int errorCode) {
+                super.onScanFailed(errorCode);
+                LogUtils.d("onScanFailed:" + errorCode);
+            }
+        };
+    }
+
+    /**
+     * 如果正在扫描，则取消蓝牙扫描；注意！需要和开启蓝牙传入的回调是同一个实例
+     */
+    private void stopScan() {
+        isScanning = false;
+        // 解除定时任务
+        disposables.clear();
+        mBluetoothScanner.stopScan(mScanCallback);
+        btnScan.setText("开启扫描");
+        mViewModel.getBluetoothStateLiveData().setValue("蓝牙扫描已停止");
+    }
+
+    /**
+     * 如果没开启扫描，则开启蓝牙扫描
+     */
+    private void startScan() {
+        isScanning = true;
+
+        // 设置扫描定时
+        Disposable disposable = Observable.interval(0, 12, TimeUnit.SECONDS)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(aLong -> {
+                    // 12s后停止扫描
+                    stopScan();
+                });
+        disposables.add(disposable);
+
+        mBluetoothScanner.startScan(mScanCallback);
+        btnScan.setText("停止扫描");
+        mViewModel.getBluetoothStateLiveData().setValue("蓝牙扫描已开启");
     }
 
     /**
      * 连接蓝牙设备
      */
-    private void connectBluetoothDevice(BluetoothDevice device) {
+    private void bluetoothConnect(BluetoothDevice device) {
         mBluetoothGatt = device.connectGatt(this, false, new BluetoothGattCallback() {
 
             @Override
@@ -264,5 +313,11 @@ public class BluetoothActivity extends AppCompatActivity implements LifecycleOwn
                 super.onCharacteristicChanged(gatt, characteristic);
             }
         });
+    }
+
+    @Override
+    protected void onStop() {
+        stopScan();
+        super.onStop();
     }
 }
