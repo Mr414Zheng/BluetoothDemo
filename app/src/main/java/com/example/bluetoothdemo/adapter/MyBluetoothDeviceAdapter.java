@@ -25,6 +25,8 @@ public class MyBluetoothDeviceAdapter extends RecyclerView.Adapter<MyBluetoothDe
 
     // 扫描到的蓝牙列表
     private ArrayList<BluetoothDevice> mDataList;
+    // item点击事件
+    private OnItemClickListener listener;
 
     public MyBluetoothDeviceAdapter(ArrayList<BluetoothDevice> mDataList) {
         this.mDataList = mDataList;
@@ -42,6 +44,8 @@ public class MyBluetoothDeviceAdapter extends RecyclerView.Adapter<MyBluetoothDe
         BluetoothDevice device = mDataList.get(position);
         holder.tvName.setText(device.getName());
         holder.tvAddress.setText(device.getAddress());
+
+        holder.itemView.setOnClickListener(v -> listener.onItemClick(device));
     }
 
     @Override
@@ -73,6 +77,17 @@ public class MyBluetoothDeviceAdapter extends RecyclerView.Adapter<MyBluetoothDe
 
         mDataList.addAll(newDevices);
         notifyItemRangeInserted(mDataList.size(), newDevices.size());
+    }
+
+    /**
+     * item点击事件
+     */
+    public interface OnItemClickListener {
+        void onItemClick(BluetoothDevice device);
+    }
+
+    public void setOnItemClickListener(OnItemClickListener listener) {
+        this.listener = listener;
     }
 
     class BluetoothDeviceViewHolder extends RecyclerView.ViewHolder {
