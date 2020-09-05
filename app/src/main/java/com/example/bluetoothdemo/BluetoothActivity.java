@@ -19,7 +19,6 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -50,9 +49,9 @@ import io.reactivex.schedulers.Schedulers;
 public class BluetoothActivity extends AppCompatActivity implements LifecycleOwner,
         View.OnClickListener {
 
-    private BluetoothViewModel mViewModel;
     // 开启蓝牙请求码
     private final int REQUEST_ENABLE_BT = 1;
+    private BluetoothViewModel mViewModel;
     // 扫描按钮
     private Button btnScan;
     // 查询已配对蓝牙设备列表
@@ -77,25 +76,7 @@ public class BluetoothActivity extends AppCompatActivity implements LifecycleOwn
     // 存放扫描到的蓝牙设备
     private HashMap<String, BluetoothDevice> mDevices;
     // 经典蓝牙广播接收器
-    private final BroadcastReceiver receiver = new BroadcastReceiver() {
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-            if (BluetoothDevice.ACTION_FOUND.equals(action)) {
-                // Discovery has found a device. Get the BluetoothDevice
-                // object and its info from the Intent.
-                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-                String deviceName = device.getName();
-                String deviceHardwareAddress = device.getAddress(); // MAC address
-                if (!mDevices.containsKey(deviceHardwareAddress)) {
-                    // 将初次扫描出的设备结果保存起来
-                    mDevices.put(deviceHardwareAddress, device);
-                    mViewModel.getBluetoothDevicesLiveData().setValue(mDevices);
-                }
-            }
-        }
-    };
-    // 经典蓝牙是否注册广播接收器
-    private boolean isRegister;
+    private BroadcastReceiver mOldBluetoothReceiver;
     // 存放以前绑定过的蓝牙设备
     private HashMap<String, BluetoothDevice> mRecords;
     // 由蓝牙连接到的设备的托管
@@ -107,6 +88,8 @@ public class BluetoothActivity extends AppCompatActivity implements LifecycleOwn
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_bluetooth);
 
+        LogUtils.getConfig().setGlobalTag(AppKey.AUTHOR);
+
         findViewByIds();
 
         initListeners();
@@ -116,14 +99,8 @@ public class BluetoothActivity extends AppCompatActivity implements LifecycleOwn
         // 注册活动生命周期观察者
         registerLifecycleObserver();
 
-        // 检测是否支持蓝牙4.0 BLE
-        if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
-            Toast.makeText(this, "设备不支持蓝牙4.0", Toast.LENGTH_SHORT).show();
-            finish();
-        } else {
-            // 创建ViewModel观察者
-            createViewModelObserver();
-        }
+        // 创建ViewModel观察者
+        createViewModelObserver();
     }
 
     private void findViewByIds() {
@@ -210,10 +187,15 @@ public class BluetoothActivity extends AppCompatActivity implements LifecycleOwn
         int id = v.getId();
         switch (id) {
             case R.id.btn_scan:
-                // 蓝牙4.0扫描
-                bluetoothScan();
-                // 经典蓝牙
-                // oldBluetoothScan();
+                // 检测是否支持蓝牙4.0 BLE
+                if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
+                    LogUtils.d("设备不支持蓝牙4.0");
+                    // 经典蓝牙
+                    oldBluetoothScan();
+                } else {
+                    // 蓝牙4.0扫描
+                    bluetoothScan();
+                }
                 break;
             case R.id.btn_scan_record:
                 // 已配对过的蓝牙设备记录
@@ -245,7 +227,7 @@ public class BluetoothActivity extends AppCompatActivity implements LifecycleOwn
             BluetoothManager manager = (BluetoothManager) getSystemService(BLUETOOTH_SERVICE);
             mBluetoothAdapter = manager.getAdapter();
         }
-
+        // 系统记录的已配对设备集合
         Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
         HashMap<String, BluetoothDevice> hashMap = new HashMap<>();
 
@@ -277,9 +259,11 @@ public class BluetoothActivity extends AppCompatActivity implements LifecycleOwn
             return;
         }
 
-        IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
-        registerReceiver(receiver, filter);
-        isRegister = true;
+        if (mOldBluetoothReceiver == null) {
+            mOldBluetoothReceiver = new OldBluetoothReceiver();
+            IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
+            registerReceiver(mOldBluetoothReceiver, filter);
+        }
         mBluetoothAdapter.startDiscovery();
     }
 
@@ -438,9 +422,32 @@ public class BluetoothActivity extends AppCompatActivity implements LifecycleOwn
     @Override
     protected void onStop() {
         stopScan();
-        if (isRegister) {
-            unregisterReceiver(receiver);
+        if (mOldBluetoothReceiver != null) {
+            unregisterReceiver(mOldBluetoothReceiver);
         }
         super.onStop();
     }
+
+    /**
+     * 经典蓝牙广播接收器
+     */
+    private class OldBluetoothReceiver extends BroadcastReceiver {
+
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (BluetoothDevice.ACTION_FOUND.equals(action)) {
+                // 发现设备，从Intent获取设备信息
+                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                // 设备名和设备Mac地址
+                String deviceName = device.getName();
+                String deviceHardwareAddress = device.getAddress();
+                if (!mDevices.containsKey(deviceHardwareAddress)) {
+                    // 将初次扫描出的设备结果保存起来
+                    mDevices.put(deviceHardwareAddress, device);
+                    mViewModel.getBluetoothDevicesLiveData().setValue(mDevices);
+                }
+            }
+        }
+    }
+
 }

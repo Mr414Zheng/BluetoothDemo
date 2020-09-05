@@ -7,6 +7,7 @@ package com.example.bluetoothdemo.constant
  */
 class AppKey {
     companion object {
+        const val AUTHOR = "ZhengHuaizhi"
         // 蓝牙MAC地址
         const val BLUETOOTH_MAC = "MAC"
     }
