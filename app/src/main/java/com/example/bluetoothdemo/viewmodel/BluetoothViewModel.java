@@ -33,16 +33,6 @@ public class BluetoothViewModel extends ViewModel {
         return mBluetoothState;
     }
 
-    //    /**
-    //     * 设置蓝牙状态LiveData
-    //     */
-    //    public void setBluetoothStateLiveData(String state) {
-    //        if (mBluetoothState == null) {
-    //            mBluetoothState = new MutableLiveData<>();
-    //        }
-    //        mBluetoothState.setValue(state);
-    //    }
-
     /**
      * 获取扫描到的蓝牙设备LiveData
      */
@@ -53,16 +43,6 @@ public class BluetoothViewModel extends ViewModel {
         return mBluetoothDevices;
     }
 
-    //    /**
-    //     * 设置扫描到的蓝牙设备LiveData
-    //     */
-    //    public void setBluetoothDevicesLiveData(ArrayList<BluetoothDevice> devices) {
-    //        if (mBluetoothDevices == null) {
-    //            mBluetoothDevices = new MutableLiveData<>();
-    //        }
-    //        mBluetoothDevices.setValue(devices);
-    //    }
-
     /**
      * 获取连接配对过的蓝牙设备LiveData
      */
@@ -72,14 +52,4 @@ public class BluetoothViewModel extends ViewModel {
         }
         return mRecord;
     }
-
-    //    /**
-    //     * 设置连接配对过的蓝牙设备LiveData
-    //     */
-    //    public void setRecordLiveData(ArrayList<BluetoothDevice> devices) {
-    //        if (mRecord == null) {
-    //            mRecord = new MutableLiveData<>();
-    //        }
-    //        mRecord.setValue(devices);
-    //    }
 }

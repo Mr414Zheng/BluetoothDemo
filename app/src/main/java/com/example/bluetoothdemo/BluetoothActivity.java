@@ -31,6 +31,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.blankj.utilcode.util.LogUtils;
 import com.blankj.utilcode.util.SPUtils;
 import com.example.bluetoothdemo.adapter.MyBluetoothDeviceAdapter;
+import com.example.bluetoothdemo.constant.AppKey;
 import com.example.bluetoothdemo.lifecycle.BluetoothLifecycleObserver;
 import com.example.bluetoothdemo.viewmodel.BluetoothViewModel;
 
@@ -49,9 +50,9 @@ import io.reactivex.schedulers.Schedulers;
 public class BluetoothActivity extends AppCompatActivity implements LifecycleOwner,
         View.OnClickListener {
 
+    private BluetoothViewModel mViewModel;
     // 开启蓝牙请求码
     private final int REQUEST_ENABLE_BT = 1;
-    private BluetoothViewModel mViewModel;
     // 扫描按钮
     private Button btnScan;
     // 查询已配对蓝牙设备列表
@@ -212,7 +213,7 @@ public class BluetoothActivity extends AppCompatActivity implements LifecycleOwn
                 // 蓝牙4.0扫描
                 bluetoothScan();
                 // 经典蓝牙
-                //                 oldBluetoothScan();
+                // oldBluetoothScan();
                 break;
             case R.id.btn_scan_record:
                 // 已配对过的蓝牙设备记录
@@ -220,7 +221,7 @@ public class BluetoothActivity extends AppCompatActivity implements LifecycleOwn
                 break;
             case R.id.btn_reconnect:
                 // 重连设备
-                String address = SPUtils.getInstance().getString("Mac");
+                String address = SPUtils.getInstance().getString(AppKey.BLUETOOTH_MAC);
                 if (mBluetoothAdapter == null) {
                     BluetoothManager manager = (BluetoothManager) getSystemService(BLUETOOTH_SERVICE);
                     mBluetoothAdapter = manager.getAdapter();
@@ -402,7 +403,7 @@ public class BluetoothActivity extends AppCompatActivity implements LifecycleOwn
                 super.onConnectionStateChange(gatt, status, newState);
                 LogUtils.d("onConnectionStateChange:" + gatt.getDevice().getBondState());
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
-                    SPUtils.getInstance().put("Mac", device.getAddress());
+                    SPUtils.getInstance().put(AppKey.BLUETOOTH_MAC, device.getAddress());
                     device.createBond();
                     mViewModel.getBluetoothStateLiveData().postValue("蓝牙已连接");
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
