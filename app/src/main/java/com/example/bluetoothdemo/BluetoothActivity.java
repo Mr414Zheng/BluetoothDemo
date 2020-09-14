@@ -398,6 +398,7 @@ public class BluetoothActivity extends AppCompatActivity implements LifecycleOwn
             @Override
             public void onServicesDiscovered(BluetoothGatt gatt, int status) {
                 super.onServicesDiscovered(gatt, status);
+                // 当您的 Android 应用成功连接到 GATT 服务器并发现服务后，应用便可在支持的位置读取和写入属性。
             }
 
             @Override
