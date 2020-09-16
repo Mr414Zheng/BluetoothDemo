@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
 import android.bluetooth.le.BluetoothLeScanner;
@@ -27,6 +28,7 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.blankj.utilcode.util.ConvertUtils;
 import com.blankj.utilcode.util.LogUtils;
 import com.blankj.utilcode.util.SPUtils;
 import com.example.bluetoothdemo.adapter.MyBluetoothDeviceAdapter;
@@ -41,10 +43,14 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import io.reactivex.Observable;
+import io.reactivex.ObservableOnSubscribe;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.schedulers.Schedulers;
+
+import static android.bluetooth.BluetoothGatt.GATT_SUCCESS;
+import static android.bluetooth.BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE;
 
 public class BluetoothActivity extends AppCompatActivity implements LifecycleOwner,
         View.OnClickListener {
@@ -380,44 +386,75 @@ public class BluetoothActivity extends AppCompatActivity implements LifecycleOwn
      * 连接蓝牙设备
      */
     private void bluetoothConnect(BluetoothDevice device) {
-        mBluetoothGatt = device.connectGatt(this, false, new BluetoothGattCallback() {
+        Observable.create((ObservableOnSubscribe<String>) emitter -> {
+            mBluetoothGatt = device.connectGatt(this, false, new BluetoothGattCallback() {
 
-            @Override
-            public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
-                super.onConnectionStateChange(gatt, status, newState);
-                LogUtils.d("onConnectionStateChange:" + gatt.getDevice().getBondState());
-                if (newState == BluetoothProfile.STATE_CONNECTED) {
-                    SPUtils.getInstance().put(AppKey.BLUETOOTH_MAC, device.getAddress());
-                    device.createBond();
-                    mViewModel.getBluetoothStateLiveData().postValue("蓝牙已连接");
-                } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                    mViewModel.getBluetoothStateLiveData().postValue("蓝牙未连接");
+                @Override
+                public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
+                    super.onConnectionStateChange(gatt, status, newState);
+                    LogUtils.d("onConnectionStateChange:" + gatt.getDevice().getBondState(),
+                            "status:" + status, "newState:" + newState);
+                    if (newState == BluetoothProfile.STATE_CONNECTED) {
+                        SPUtils.getInstance().put(AppKey.BLUETOOTH_MAC, device.getAddress());
+                        device.createBond();
+                        mViewModel.getBluetoothStateLiveData().postValue("蓝牙已连接");
+                        // 启动服务发现
+                        mBluetoothGatt.discoverServices();
+                    } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                        mViewModel.getBluetoothStateLiveData().postValue("蓝牙未连接");
+                    }
                 }
-            }
 
-            @Override
-            public void onServicesDiscovered(BluetoothGatt gatt, int status) {
-                super.onServicesDiscovered(gatt, status);
-                // 当您的 Android 应用成功连接到 GATT 服务器并发现服务后，应用便可在支持的位置读取和写入属性。
-            }
+                @Override
+                public void onServicesDiscovered(BluetoothGatt gatt, int status) {
+                    super.onServicesDiscovered(gatt, status);
+                    // 当您的 Android 应用成功连接到 GATT 服务器并发现服务后，应用便可在支持的位置读取和写入属性。
+                    LogUtils.d("onServicesDiscovered", "status:" + status);
+                    if (status == GATT_SUCCESS) {
+                        ArrayList<String> uuidList = new ArrayList<>();
+                        for (BluetoothGattService service : gatt.getServices()) {
+                            for (BluetoothGattCharacteristic characteristic : service.getCharacteristics()) {
+                                // 拿一个特征值来写操作，实际上仅仅只有支持写操作的特征值才能正常写入
+                                byte[] bytes = new byte[4];
+                                bytes[0] = (byte) 0x21;
+                                bytes[1] = (byte) 0xFF;
+                                bytes[2] = (byte) 0x00;
+                                bytes[3] = (byte) 0x00;
+                                characteristic.setWriteType(WRITE_TYPE_NO_RESPONSE);
+                                characteristic.setValue(bytes);
+                                boolean result = gatt.writeCharacteristic(characteristic);
+                                if (result) {
+                                    LogUtils.d("writeCharacteristic success:" + characteristic.getUuid());
+                                }
+                                uuidList.add(characteristic.getUuid().toString());
+                            }
+                        }
+                        LogUtils.d("uuidList:" + uuidList.toString());
+                    }
+                }
 
-            @Override
-            public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic,
-                                             int status) {
-                super.onCharacteristicRead(gatt, characteristic, status);
-            }
+                @Override
+                public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic,
+                                                 int status) {
+                    super.onCharacteristicRead(gatt, characteristic, status);
+                    LogUtils.d("onCharacteristicRead", "status:" + status,
+                            ConvertUtils.bytes2HexString(characteristic.getValue()));
+                }
 
-            @Override
-            public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic,
-                                              int status) {
-                super.onCharacteristicWrite(gatt, characteristic, status);
-            }
+                @Override
+                public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic,
+                                                  int status) {
+                    super.onCharacteristicWrite(gatt, characteristic, status);
+                    LogUtils.d("onCharacteristicWrite", "status:" + status,
+                            ConvertUtils.bytes2HexString(characteristic.getValue()));
+                }
 
-            @Override
-            public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
-                super.onCharacteristicChanged(gatt, characteristic);
-            }
-        });
+                @Override
+                public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
+                    super.onCharacteristicChanged(gatt, characteristic);
+                }
+            });
+        }).subscribeOn(Schedulers.io()).subscribe();
     }
 
     @Override

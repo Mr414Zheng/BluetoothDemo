@@ -19,7 +19,8 @@ import java.util.List;
 public class BluetoothLifecycleObserver implements DefaultLifecycleObserver {
 
     private final String[] PERMISSIONS = {Manifest.permission.BLUETOOTH,
-            Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.BLUETOOTH_ADMIN};
+            Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.BLUETOOTH_ADMIN,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
 
     @Override
     public void onCreate(@NonNull LifecycleOwner owner) {
